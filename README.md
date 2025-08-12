@@ -1,53 +1,94 @@
+# Take-Home Assessment — Solutions & Explanations
+
+This repository contains my solutions for the Take-Home Assessment involving Docker, PostgreSQL, Python, SQL, FastAPI, and API integration with Collate (OpenMetadata).
+
 ---
 
-## 📝 Solutions & Explanations
+## Step 1: Start the Database with Docker
 
-### 1️⃣ Start the Database
+**What I Did:**
+- Built the PostgreSQL Docker image:
+  ```bash
+  docker build -t collate-postgres -f docker/Dockerfile_postgres .
+  ```
+- Ran the container with environment variables and port mapping:
+  ```bash
+  docker run -d --name collate-pg -p 5432:5432 -e POSTGRES_PASSWORD=password collate-postgres
+  ```
+- Verified the container was running:
+  ```bash
+  docker ps
+  ```
 
-**Approach:**  
-Docker was new to me, so I learned how to build and run the image in GitHub Codespaces.  
-**Key Decisions:**  
-- Used `docker build` and `docker run` with proper environment variables for password.
-- Mapped port 5432 for local access.
-- Verified container status with `docker ps`.
 
-**Commands:**
-```bash
-docker build -t collate-postgres -f docker/Dockerfile_postgres .
-docker run -d --name collate-pg -p 5432:5432 -e POSTGRES_PASSWORD=password collate-postgres
-docker ps
+**Terminal Output:**
 ```
-**Challenge:**  
-Container exited quickly due to password format; resolved by troubleshooting env variables.
+(.venv) @lingasani-haritha ➜ /workspaces/harita (main) $ docker --version
+Docker version 28.3.1-1, build 38b7060a218775811da953650d8df7d492653f8f
+(.venv) @lingasani-haritha ➜ /workspaces/harita (main) $ docker build -t collate-postgres -f docker/Dockerfile_postgres . 
+[+] Building 1.9s (12/12) FINISHED docker:default 
+=> [internal] load build definition from Dockerfile_postgres 0.0s 
+=> => transferring dockerfile: 256B 0.0s 
+=> [internal] load metadata for docker.io/library/postgres:14 1.8s 
+=> [auth] library/postgres:pull token for registry-1.docker.io 0.0s 
+=> [internal] load .dockerignore 0.0s 
+=> => transferring context: 2B 0.0s 
+=> [1/6] FROM docker.io/library/postgres:14@sha256:563a4985838fcb5ac2e60fd58a1055ceafa791665e75e18d236221af0d478a33 0.0s 
+=> [internal] load build context 0.0s 
+=> => transferring context: 218B 0.0s 
+=> CACHED [2/6] WORKDIR /docker-entrypoint-initdb.d 0.0s 
+=> CACHED [3/6] COPY docker/* . 0.0s 
+=> CACHED [4/6] RUN apt-get update && apt-get install -y unzip 0.0s 
+=> CACHED [5/6] RUN unzip sample.zip && tar -xvf dvdrental.tar 0.0s 
+=> CACHED [6/6] RUN chmod -R 775 /docker-entrypoint-initdb.d 0.0s 
+=> exporting to image 0.0s 
+=> => exporting layers 0.0s 
+=> => writing image sha256:9c5f95dba5f5d8efb96726418c0250d6a03faf7f2cc8d9ae196619e246c916fd 0.0s 
+=> => naming to docker.io/library/collate-postgres 
+(.venv) @lingasani-haritha ➜ /workspaces/harita (main) $ docker run -d --name collate-pg -p 5432:5432 -e POSTGRES_PASSWORD=password collate-postgres 
+f7e894a82d9f10b152fd4d112b80ac82e64e6acf24a7712826600c2db216e6fb 
+(.venv) @lingasani-haritha ➜ /workspaces/harita (main) $ docker ps 
+CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES 
+f7e894a82d9f collate-postgres "docker-entrypoint.s…" 11 seconds ago Up 10 seconds 0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp collate-pg 
+(.venv) @lingasani-haritha ➜ /workspaces/harita (main) $ 
+Docker running
+```
+**Challenges Faced:**
+- Container exited immediately after start due to missing/incorrect `POSTGRES_PASSWORD`.
+- Resolved by adding the correct environment variable and checking logs
+ 
+
+**Alternatives Considered:**
+- Running PostgreSQL directly on the host (chose Docker for isolation).
 
 **Screenshot:**  
+![Docker Running](docker_run_and_status.png)
 
-<img width="940" height="239" alt="image" src="https://github.com/user-attachments/assets/875e7bbf-380c-4fb7-ba1d-c68e9552691f" />
-
+![Docker port Mpapping](docker_port_mapping.png)
 
 ---
----
 
-### 2️⃣ Connect to the Database with Python
+## Step 2: Connect to the Database with Python
 
-**Approach:**  
-Installed `psycopg2-binary` and wrote queries in `db_connect.py` to explore the database.
-
-**Commands:**
-```bash
-pip3 install psycopg2-binary
-python db_connect.py
-```
+**What I Did:**
+- Installed `psycopg2-binary`:
+  ```bash
+  pip3 install psycopg2-binary
+  ```
+- Wrote a Python script to connect and query the database:
+  ```bash
+  python db_connect.py
+  ```
 
 **Queries Used:**
 ```sql
--- 1. Test connection
+-- Test connection
 SELECT version();
 
--- 2. Count tables
+-- Count tables
 SELECT COUNT(*) FROM information_schema.tables WHERE table_type = 'BASE TABLE';
 
--- 3. List table names
+-- List user table names
 SELECT table_schema, table_name
 FROM information_schema.tables
 WHERE table_type = 'BASE TABLE'
@@ -55,206 +96,221 @@ WHERE table_type = 'BASE TABLE'
   AND table_schema NOT IN ('pg_catalog', 'information_schema')
 ORDER BY table_schema, table_name;
 
--- 4. % distinct first_names in actor
-SELECT ROUND(100.0 * COUNT(DISTINCT first_name) / COUNT(first_name), 2) AS distinct_percentage
+-- % distinct first_names in actor
+SELECT ROUND(100.0 * COUNT(DISTINCT first_name) / COUNT(*), 2) AS distinct_first_name_percentage
 FROM actor;
 ```
 
 **Output:**
 ```
-PostgreSQL version: PostgreSQL 14.18 (Debian 14.18-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
-
---------------------------------------------------
-
+PostgreSQL version: PostgreSQL 14.18 ...
 Total number of tables (all schemas): 75
-
-All tables (schema.table):
-information_schema.sql_features
-information_schema.sql_implementation_info
-...
-public.actor
-public.address
-public.category
-public.city
-public.country
-public.customer
-public.film
-public.film_actor
-public.film_category
-public.inventory
-public.language
-public.payment
-public.rental
-public.staff
-public.store
-
---------------------------------------------------
-
 Total number of user tables (excluding system schemas): 15
-
-User tables (schema.table):
-public.actor
-public.address
-public.category
-public.city
-public.country
-public.customer
-public.film
-public.film_actor
-public.film_category
-public.inventory
-public.language
-public.payment
-public.rental
-public.staff
-public.store
-
---------------------------------------------------
-
+User tables: public.actor, public.address, ...
 Percentage of distinct first_names in actor table: 64.00%
 ```
 
+**Challenges Faced:**
+- Filtering out system tables and user tables.
+- Writing efficient SQL for distinct percentage.
+
 **Screenshot:**  
-![SQL Query Results](images/db_connect_output.png)
+![SQL Query Results](db_connect_and_tables_details.png)
+
+![Query_Results](query_outputs.png)
+
 
 ---
-### 2️⃣ Connect to the Database with Python
 
-**Approach:**  
-Installed `psycopg2-binary` and wrote queries in `db_connect.py` to explore the database.
+## Step 3: Debugging Operational Errors
 
-**Commands:**
-```bash
-pip3 install psycopg2-binary
-python db_connect.py
+### 3.1 Password Authentication Failed
+
+**Error:**
+```
+OperationalError: connection to server at "localhost", port 5432 failed: FATAL:  password authentication failed for user "test"
 ```
 
-**Queries:**
-SELECT version();
-SELECT table_schema, table_name
-            FROM information_schema.tables
-            WHERE table_type = 'BASE TABLE'
-              AND table_catalog = 'dvdrental'
-              AND table_schema NOT IN ('pg_catalog', 'information_schema')
-            ORDER BY table_schema, table_name
-SELECT ROUND(100.0 * COUNT(DISTINCT first_name) / COUNT(first_name), 2) AS distinct_percentage
-            FROM actor;
+**What It Means:**  
+The database refused your login attempt because of incorrect credentials or password.
 
-**Output:**
-- PostgreSQL version detected
-- Total tables: 75
-- User tables: 15
-- % distinct first_names in actor: 64.00%
+**How I Would Handle It:**
+- **Verify Credentials:** Double-check the username and password the user and I am using. Make sure they match what is configured in the PostgreSQL server (see `docker/z-postgres-script.sql`).
+- **Test Manual Connection:** Try connecting manually using:
+  ```bash
+  psql -U test -h localhost -p 5432
+  ```
+- **Check Connection String:** Ensure Python or application connection string includes the correct credentials and is properly formatted.
+- **Review Authentication Settings:** Check the `pg_hba.conf` file to confirm password authentication is enabled (e.g., `md5` or `scram-sha-256`).
+- **Add Error Handling:** In your Python code, catch `OperationalError` and provide a clear message to the user.
 
-**Screenshot:**  
-![SQL Query Results](images/db_connect_output.png)
+**If user continue to face issues:**  
+Request user to please verify your credentials and reset your password if necessary. Also, check database configuration to allow password logins and to provide the exact connection string (without passwords) and any relevant PostgreSQL server logs so I can assist further.
 
 ---
 
-### 3️⃣ Debugging Operational Errors
+### 3.2 Connection Refused
 
-#### 3.1 Password Authentication Failed
+**Error:**
+```
+OperationalError: connection to server at "localhost", port 5432 failed: Connection refused
+```
 
-**Explanation:**  
-Occurs when credentials are incorrect.  
-**Resolution Steps:**  
-- Verify username/password
-- Test manual login with `psql`
-- Reset password if needed
-- Check connection string and `pg_hba.conf`
-- Restart PostgreSQL after changes
+**What It Means:**  
+The PostgreSQL server is not running or not listening on the expected port.
 
-**Sample Code:**
+**How I Would Handle It:**
+- **Check if Server is Running:** Confirm the Docker container is running:
+  ```bash
+  docker ps
+  ```
+- **Verify Port Mapping:** Ensure port 5432 is mapped correctly:
+  ```bash
+  netstat -plnt | grep 5432
+  ```
+- **Check Logs:** Look at the PostgreSQL logs inside the container:
+  ```bash
+  docker logs <container>
+  ```
+- **Firewall/Network:** Make sure there are no firewall or OS-level blocks preventing access.
+
+**If you continue to face issues:**  
+
+If user keeps encountering a “connection refused” error, ensure  database server is running and accepting TCP/IP connections on the expected port, and that no firewalls or Docker misconfigurations are blocking access and to provide details about your Docker setup, port mappings, and any error logs.
+
+---
+
+## Step 4: Fixing the API
+
+### 4.1 Debugging the call
+
+**Error from customer:**
+```
+{"detail":[{"type":"missing","loc":["body"],"msg":"Field required","input":null}]}
+```
+
+**What Went Wrong:**  
+Curl command did not include `-d` flag, so JSON was not sent in the request body.
+
+**How I Fixed It:**
+- Updated curl command:
+  ```bash
+  curl -X POST -H "Content-Type: application/json" -d '{"name": "Pizza", "price": 1.15}' http://localhost:1234/items
+  ```
+- Explain to customer that the API expects JSON data in the body.
+
+---
+
+### 4.2 Internal Server Error Fix
+
+**Cause:**
 ```python
-from sqlalchemy.exc import OperationalError
-
-try:
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-except OperationalError as e:
-    if "password authentication failed" in str(e):
-        print("Authentication failed: verify username and password.")
-    else:
-        print("Database error:", e)
+ITEMS = ITEMS.append(item)
 ```
-
-#### 3.2 Connection Refused
-
-**Explanation:**  
-Occurs if server/container is not running or port mapping is incorrect.  
-**Resolution Steps:**  
-- Start container: `docker start collate-pg`
-- Check port: `netstat -plnt | grep 5432`
-- Verify Docker mapping: `docker ps`
-
-**Screenshot:**  
-![Operational Error](images/operational_error.png)
-
----
-
-### 4️⃣ Fixing an API (FastAPI)
-
-**Approach:**  
-Installed FastAPI and Uvicorn.  
-**Bug:**  
-`ITEMS = ITEMS.append(item)` returns None, breaking the list.
+`.append()` returns None, so ITEMS became None, causing crashes.
 
 **Fix:**
 ```python
-@app.post("/items")
-def create_item(item: Item) -> Item:
-    ITEMS.append(item)
-    return item
+ITEMS.append(item)
 ```
+POST requests now successfully store data.
+---
 
-**Curl Debugging:**  
-Original curl was missing `-d` flag.  
-**Correct Command:**
-```bash
-curl -X POST -H "Content-Type: application/json" -d '{"name": "Pizza", "price": 1.15}' http://localhost:1234/items
-```
-**Verified with GET and POST.**
+**Validations & Terminal Outputs:**
+
+- **POST request validation:**
+  ```
+  (.venv) @lingasani-haritha ➜ /workspaces/harita (main) $ curl -X POST -H "Content-Type: application/json" -d '{"name": "Pizza", "price": 1.15}' http://localhost:1234/items
+  {"name":"Pizza","description":null,"price":1.15}
+  ```
+
+- **Additional POST and GET requests:**
+  ```bash
+  curl -X POST -H "Content-Type: application/json" -d '{"name": "chocolate", "price": 2}' http://localhost:1234/items
+  curl http://localhost:1234/items
+  ```
+  Output:
+  ```
+  [{"name":"Pizza","description":null,"price":1.15},{"name":"chocolate","description":null,"price":2.0},{"name":"chocolate","description":null,"price":2.0}]
+  ```
+
+---
 
 **Screenshot:**  
-![API Response](images/api_response.png)
+![API Response](api_call_and_debugging_api.png)
+![Api change](corrected_api.png)
+
+**Summary:**
+
+- **4.1 (Debugging the call):**  
+  The "Field required" error occurred because the API expected a JSON body, but the curl request was missing the `-d` flag. This was resolved by sending the JSON data correctly, ensuring the API's POST `/items` endpoint receives an `Item` model in the body.
+
+- **4.2 (Debugging the API):**  
+  The Internal Server Error was caused by assigning the result of `ITEMS.append(item)` (which is `None`) back to `ITEMS`, breaking the list. The fix was to simply call `ITEMS.append(item)` without assignment, so the list updates correctly.
 
 ---
 
-### 5️⃣ Python SDK & APIs (Collate/OpenMetadata)
+## Step 5: Python SDK & API Interaction with Collate (OpenMetadata)
 
-**Approach:**  
-Installed OpenMetadata SDK, generated PAT token, and fetched table details for the required FQN.
+**What I Did:**
+- Logged into Collate instance at [Collate](https://collate-hiring.free-1.getcollate.cloud/) with provided credentials.
+- Generated Personal Access Token (PAT).
+- Installed OpenMetadata Python SDK:
+  ```bash
+  pip install "openmetadata-ingestion~=1.9.0.0"
+  ```
+- Wrote Python script to:
+  - Authenticate using PAT.
+  - Use `list_entities` to fetch tables.
+  - Filter tables by FQN: `Snowflake.SNOWFLAKE_SAMPLE_DATA.INFORMATION_SCHEMA.COLUMNS`
+  - Retrieve table details by ID.
 
-**Sample Code:**
-```python
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection, AuthProvider,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import OpenMetadataJWTClientConfig
 
-server_config = OpenMetadataConnection(
-    hostPort="https://collate-hiring.free-1.getcollate.cloud/api",
-    authProvider=AuthProvider.openmetadata,
-    securityConfig=OpenMetadataJWTClientConfig(
-        jwtToken="<YOUR-ACCESS-TOKEN>",
-    ),
-)
-metadata = OpenMetadata(server_config)
+**Output:**
 ```
-**Output:**  
-Table ID: `b58e3c0d-dc4f-401a-8b51-9dcfbfc567b0`  
-Detailed info printed in terminal.
+Table Found: root='COLUMNS'
+Table ID: root=UUID('b58e3c0d-dc4f-401a-8b51-9dcfbfc567b0')
+Detailed Table Info: {...}
+```
+
+**Challenges Faced:**
+- Understanding SDK usage and authentication flow.
+- Mapping FQN to table ID.
+- Handling API request headers.
 
 **Screenshot:**  
-![Table Details](images/table_details.png)
+![Table Details](openmetadata_table_info.png)
 
 ---
 
-## 🔑 Summary of Approach
+## Summary
 
-- **Key Decisions:** Used Docker for DB, Python for queries, FastAPI for API, OpenMetadata SDK for Collate.
-- **Challenges:** Docker password env, API bug, connection errors.
-- **Resolutions:** Troubleshooting, code fixes, correct curl usage, verified outputs.
+This assessment helped me solidify foundational skills in:
+- Building Docker Image. 
+- Writing SQL queries and connecting via Python.
+- Debugging common database connection issues.
+- Understanding HTTP request format and FastAPI request handling.
+- Working with third-party API SDKs and authentication.
 
----
+**How to Run:**
+- Build and run the PostgreSQL Docker container:
+  ```bash
+  docker build -t collate-postgres -f docker/Dockerfile_postgres .
+  docker run -d --name collate-pg -p 5432:5432 -e POSTGRES_PASSWORD=password collate-postgres
+  ```
+- Run Python DB connection script:
+  ```bash
+  python db_connect.py
+  ```
+- Start FastAPI server and test API:
+  ```bash
+  python api.py
+  ```
+- Run Python script for Collate API:
+  ```bash
+  python fetch_table_details.py
+  ```
+
+
+Thank you for reviewing my submission.  
+— Haritha Lingasani
